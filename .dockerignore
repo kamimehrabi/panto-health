@@ -1,0 +1,12 @@
+node_modules/
+node_modules
+dist
+
+test
+
+.git
+.vscode
+*.log
+
+npm-debug.log*
+yarn-error.log*
