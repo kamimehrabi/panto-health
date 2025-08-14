@@ -3,11 +3,21 @@ version: '3.8'
 services:
   app:
     build:
-      context: .
+      context: ./panto-health
       dockerfile: Dockerfile
     container_name: panto-health-app
     ports:
       - '3000:3000'
+    env_file:
+      - .env
+    depends_on:
+      - rabbitmq
+      - mongo
+
+  producer:
+    build:
+      context: ./panto-health-producer
+      dockerfile: Dockerfile
     env_file:
       - .env
     depends_on:
@@ -21,6 +31,8 @@ services:
       - '15672:15672' # Management UI port
     env_file:
       - .env
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
 
   mongo:
     image: mongo:latest
@@ -35,3 +47,4 @@ services:
 
 volumes:
   mongo-data:
+  rabbitmq-data:
