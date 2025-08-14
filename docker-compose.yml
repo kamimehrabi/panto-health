@@ -21,3 +21,17 @@ services:
       - '15672:15672' # Management UI port
     env_file:
       - .env
+
+  mongo:
+    image: mongo:latest
+    container_name: panto-health-mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    env_file:
+      - .env
+
+volumes:
+  mongo-data:
