@@ -69,18 +69,18 @@ RabbitMQService ◀─consume/normalize/validate───┘
 yarn
 ```
 
-2. Configure env (create `.env` in the project root)
+2. Configure env (create `.env` in the project root and use the `.env` values that attached to the email)
 
 ```dotenv
 # Mongo
-MONGODB_URI=mongodb://localhost:27017/pantohealth
+MONGODB_URI=
 
 # RabbitMQ
-RABBITMQ_URL=amqp://app:upersecret@localhost:5672
-RABBITMQ_QUEUE=x-ray-data-queue
+RABBITMQ_URL=
+RABBITMQ_QUEUE=
 
 # App
-PORT=3000
+PORT=
 ```
 
 3. Run the app
@@ -253,10 +253,10 @@ Import `Panto Health.postman_collection.json` into Postman and use the prepared 
 Typical environment variables:
 
 ```dotenv
-MONGODB_URI=mongodb://localhost:27017/pantohealth
-RABBITMQ_URL=amqp://app:upersecret@localhost:5672
-RABBITMQ_QUEUE=x-ray-data-queue
-PORT=3000
+MONGODB_URI=
+RABBITMQ_URL=
+RABBITMQ_QUEUE=
+PORT=
 ```
 
 Consider using `@nestjs/config` for type-safe config and to provide these values to the RMQ & Mongoose modules.
