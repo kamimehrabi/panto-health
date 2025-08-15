@@ -1,98 +1,273 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# PANTOhealth — IoT X-Ray Data Management (NestJS + RabbitMQ + MongoDB)
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Process x-ray telemetry from IoT devices via RabbitMQ, persist computed metrics in MongoDB, and expose REST APIs for querying and managing signals.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## ✨ What’s inside
 
-## Description
+* **RabbitMQ Consumer & Producer**
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+  * `RabbitMQService` consumes `x-ray-data-queue` messages, validates/normalizes, and forwards to `SignalsService`.
+  * `DataProducerService` emits sample x-ray messages (triggered by `AppService` every 30s after connect).
+* **Signals Storage & Processing**
 
-## Project setup
+  * Mongoose model for signals with computed fields:
 
-```bash
-$ yarn install
+    * `deviceId`, `time`, `dataLength`, `dataVolume`, `data`, `createdAt`
+  * `SignalsService` handles create, list (with filters), find, update (recomputes metrics), and delete.
+* **REST API (CRUD + filters)**
+* **Unit Tests** for core services.
+* **Postman collection**: `Panto Health.postman_collection.json`
+* **Docker** artifacts (`Dockerfile`, `docker-compose.yml`)
+
+---
+
+## 🧱 Architecture
+
+```
+AppService  ──▶ DataProducerService ──emit──▶  RabbitMQ (x-ray-data-queue)
+                                               │
+RabbitMQService ◀─consume/normalize/validate───┘
+     │
+     └──▶ SignalsService ──▶ MongoDB (signals)
 ```
 
-## Compile and run the project
+* **Metrics**:
+
+  * `dataLength`: number of datapoints
+  * `dataVolume`: For simplicity, we define dataVolume as the sum of the first element of each datapoint tuple
+    (e.g. `[[1, …], [2, …]] → dataVolume = 3`)
+
+* **Message format (producer → queue)**:
+
+  ```json
+  {
+    "66bb584d4ae73e488c30a072": {
+      "data": [
+        [762,  [51.339764,        12.339223833333334, 1.2038000000000002]],
+        [1766, [51.33977733333333,12.339211833333334, 1.531604]],
+        [2763, [51.339782,        12.339196166666667, 2.13906]]
+      ],
+      "time": 1735683480000
+    }
+  }
+  ```
+
+---
+
+## ⚙️ Requirements
+
+* Node 20+ and Yarn (classic) **or** Docker
+* MongoDB & RabbitMQ (locally or via Docker)
+
+---
+
+## 🚀 Getting Started (Local)
+
+1. Install deps
 
 ```bash
-# development
-$ yarn run start
-
-# watch mode
-$ yarn run start:dev
-
-# production mode
-$ yarn run start:prod
+yarn
 ```
 
-## Run tests
+2. Configure env (create `.env` in the project root)
+
+```dotenv
+# Mongo
+MONGODB_URI=mongodb://localhost:27017/pantohealth
+
+# RabbitMQ
+RABBITMQ_URL=amqp://app:upersecret@localhost:5672
+RABBITMQ_QUEUE=x-ray-data-queue
+
+# App
+PORT=3000
+```
+
+3. Run the app
 
 ```bash
-# unit tests
-$ yarn run test
-
-# e2e tests
-$ yarn run test:e2e
-
-# test coverage
-$ yarn run test:cov
+yarn start:dev
 ```
 
-## Deployment
+* On startup, `AppService` connects to RabbitMQ and every **30 seconds** publishes a sample x-ray message via `DataProducerService`.
+* The consumer handles messages from `x-ray-data-queue` and stores processed signals.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+> If you prefer *no background publishing*, comment out or disable the `setInterval` in `AppService`.
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+---
+
+## 🐳 Running with Docker
+
+> Adjust service names/ports if your `docker-compose.yml` differs.
 
 ```bash
-$ yarn install -g @nestjs/mau
-$ mau deploy
+docker-compose up --build
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+This typically brings up:
 
-## Resources
+* the NestJS app
+* MongoDB
+* RabbitMQ (management UI usually at [http://localhost:15672](http://localhost:15672), app/upersecret)
 
-Check out a few resources that may come in handy when working with NestJS:
+---
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+## 📚 API Reference (Signals)
 
-## Support
+Base URL: `http://localhost:3000` (unless changed)
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+### Create
 
-## Stay in touch
+**POST** `/signals`
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+Body:
 
-## License
+```json
+{
+  "deviceId": "66bb584d4ae73e488c30a072",
+  "time": 1735683480000,
+  "data": [
+    [762,  [51.339764, 12.339223833333334, 1.2038000000000002]],
+    [1766, [51.33977733333333, 12.339211833333334, 1.531604]]
+  ]
+}
+```
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+### List (paged + filters)
+
+**GET** `/signals`
+
+Query parameters:
+
+* `page` (default `1`)
+* `limit` (default `20`)
+* `sortOrder` = `newest` | `oldest` (default `newest`)
+* `deviceId`
+* `from`, `to` (timestamp range on `time`)
+* `minDataLength`, `maxDataLength`
+* `minVolume`, `maxVolume`
+
+**Examples**
+
+```
+/signals?deviceId=66bb584d4ae73e488c30a072&from=1735683000000&to=1735684000000
+/signals?minDataLength=2&maxDataLength=100&minVolume=10
+/signals?page=2&limit=10&sortOrder=oldest
+```
+
+Returns:
+
+```json
+{
+  "items": [ /* array of signals */ ],
+  "total": 42,
+  "page": 1,
+  "limit": 20
+}
+```
+
+### Get by ID
+
+**GET** `/signals/:id`
+
+### Update
+
+**PATCH** `/signals/:id`
+
+Body (any subset):
+
+```json
+{
+  "deviceId": "new-device",
+  "time": 1735683500000,
+  "data": [
+    [1, [51.1, 12.1, 1.0]],
+    [2, [51.2, 12.2, 1.5]]
+  ]
+}
+```
+
+> When `data` changes, `dataLength` and `dataVolume` are recomputed.
+
+### Delete
+
+**DELETE** `/signals/:id`
+
+---
+
+## 🧪 Testing
+
+Run all tests:
+
+```bash
+yarn test
+```
+
+What’s covered:
+
+* **SignalsService**: create (via processing), pagination & filters, find, update (recompute), delete, error paths
+* **RabbitMQService**: payload normalization, stringified `data` parsing, validation errors, forward to SignalsService
+* **DataProducerService**: connect success/failure; emits expected payload; failure returns `503`
+* **AppService**: connects on init; schedules 30s publish interval; clears interval on shutdown
+
+> Test output is clean; in error-path tests we locally mute `Logger` in each spec.
+
+---
+
+## 📨 Producer & Consumer details
+
+* **Producer** (`DataProducerService`)
+
+  * Emits to topic/queue: `x-ray-data-queue`
+  * Payload uses the deviceId as the **object key**.
+  * `AppService` calls `connect()` then publishes every 30s.
+
+* **Consumer** (`RabbitMQService`)
+
+  * `consumeXray(payload)`
+  * Validates the payload:
+
+    * payload must be an object with a **deviceId key**
+    * `data` can be an **array** or a **JSON string** representing an array
+    * non-array data or invalid JSON → `PayloadValidationError`
+  * Logs a small debug line, then calls `SignalsService.processAndSaveXrayData(deviceId, { time, data })`
+
+> Ensure your RabbitMQ module asserts/binds `x-ray-data-queue` on startup and routes messages to `consumeXray`.
+
+---
+
+## 🗂️ Postman
+
+Import `Panto Health.postman_collection.json` into Postman and use the prepared requests for:
+
+* Create signal
+* List with filters
+* Get by id
+* Update
+* Delete
+
+---
+
+## 🔐 Configuration
+
+Typical environment variables:
+
+```dotenv
+MONGODB_URI=mongodb://localhost:27017/pantohealth
+RABBITMQ_URL=amqp://app:upersecret@localhost:5672
+RABBITMQ_QUEUE=x-ray-data-queue
+PORT=3000
+```
+
+Consider using `@nestjs/config` for type-safe config and to provide these values to the RMQ & Mongoose modules.
+
+---
+
+## 🧭 Notes & Assumptions
+
+* For simplicity, `dataVolume` is defined as the sum of the first element of each datapoint tuple.
+* Time is accepted as a number (ms since epoch).
+* If an incoming message lacks `time`, it defaults to `Date.now()` during normalization.
+* The producer module lives inside the same Nest app (per assignment, a separate app *or* module is acceptable).
+
+---
