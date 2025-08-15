@@ -1,0 +1,130 @@
+{
+	"info": {
+		"_postman_id": "43107091-dcb9-4bfb-b50b-5f2c96a0a34c",
+		"name": "Panto Health",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "43386791"
+	},
+	"item": [
+		{
+			"name": "List Signals",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base}}/signals?page=1&limit=2&deviceId=66bb584d4ae73e488c30a072",
+					"host": [
+						"{{base}}"
+					],
+					"path": [
+						"signals"
+					],
+					"query": [
+						{
+							"key": "page",
+							"value": "1"
+						},
+						{
+							"key": "limit",
+							"value": "2"
+						},
+						{
+							"key": "deviceId",
+							"value": "66bb584d4ae73e488c30a072"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create Signal",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"deviceId\": \"66bb584d4ae73e488c30a072\",\r\n    \"time\": 1735683480000, \r\n    \"data\": [\r\n      [\r\n        762,\r\n        [\r\n          51.339764,\r\n          12.339223833333334,\r\n          1.2038000000000002\r\n        ]\r\n      ],\r\n      [\r\n        1766,\r\n        [\r\n          51.33977733333333,\r\n          12.339211833333334,\r\n          1.531604\r\n        ]\r\n      ] ]\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base}}/signals",
+					"host": [
+						"{{base}}"
+					],
+					"path": [
+						"signals"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Signal",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base}}/signals/689e7f722f0ef72f0afbe41f",
+					"host": [
+						"{{base}}"
+					],
+					"path": [
+						"signals",
+						"689e7f722f0ef72f0afbe41f"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update Signal",
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"deviceId\": \"66bb584d4ae73e488c30a072\",\r\n    \"time\": 1735683480000\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base}}/signals/689e7f722f0ef72f0afbe41f",
+					"host": [
+						"{{base}}"
+					],
+					"path": [
+						"signals",
+						"689e7f722f0ef72f0afbe41f"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete Signal",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{base}}/signals/689e7f722f0ef72f0afbe41f",
+					"host": [
+						"{{base}}"
+					],
+					"path": [
+						"signals",
+						"689e7f722f0ef72f0afbe41f"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
